@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/bus-timetable/static/css/main.38cb9469.css",
+    "main.js": "/bus-timetable/static/js/main.7165b4a5.js",
+    "index.html": "/bus-timetable/index.html",
+    "main.38cb9469.css.map": "/bus-timetable/static/css/main.38cb9469.css.map",
+    "main.7165b4a5.js.map": "/bus-timetable/static/js/main.7165b4a5.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.38cb9469.css",
+    "static/js/main.7165b4a5.js"
+  ]
+}
