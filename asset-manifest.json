@@ -1,13 +1,13 @@
 {
   "files": {
-    "main.css": "/bus-timetable/static/css/main.38cb9469.css",
-    "main.js": "/bus-timetable/static/js/main.7165b4a5.js",
+    "main.css": "/bus-timetable/static/css/main.c9a6e79c.css",
+    "main.js": "/bus-timetable/static/js/main.158143a3.js",
     "index.html": "/bus-timetable/index.html",
-    "main.38cb9469.css.map": "/bus-timetable/static/css/main.38cb9469.css.map",
-    "main.7165b4a5.js.map": "/bus-timetable/static/js/main.7165b4a5.js.map"
+    "main.c9a6e79c.css.map": "/bus-timetable/static/css/main.c9a6e79c.css.map",
+    "main.158143a3.js.map": "/bus-timetable/static/js/main.158143a3.js.map"
   },
   "entrypoints": [
-    "static/css/main.38cb9469.css",
-    "static/js/main.7165b4a5.js"
+    "static/css/main.c9a6e79c.css",
+    "static/js/main.158143a3.js"
   ]
 }
