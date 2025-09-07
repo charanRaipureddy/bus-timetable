@@ -1,433 +1,544 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  MapPin, 
-  Clock, 
-  Bus, 
-  Navigation, 
-  Star, 
-  AlertCircle,
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  Star,
   Wifi,
   WifiOff,
-  RefreshCw
-} from 'lucide-react';
-import './App.css';
+  RefreshCw,
+  AlertCircle,
+  MapPin,
+  LogIn,
+  LogOut,
+} from "lucide-react";
+import "./App.css";
 
-const cityData = {
-  "Visakhapatnam": {
-    "6": { 
-      stops: ["Simhachalam", "Gajuwaka", "Gopalapatnam", "NAD Junction", "Kancharapalem", "Convent Junction", "Town Kotharoad"], 
-      freq: 10,
-      route: "Simhachalam - Town Kotharoad",
-      fare: "₹15-25"
-    },
-    "6A": { 
-      stops: ["RTC Complex", "Railway Station", "Kancharapalem", "NAD Junction", "Gopalapatnam", "Simhachalam Hill"], 
-      freq: 10,
-      route: "RTC Complex - Simhachalam Hill",
-      fare: "₹12-22"
-    },
-    "10A": { 
-      stops: ["Airport", "NAD Junction", "Gurudwara", "RTC Complex", "RK Beach"], 
-      freq: 15,
-      route: "Airport - RK Beach",
-      fare: "₹20-35"
-    },
-    "5D": { 
-      stops: ["Town Kotharoad", "Convent", "Kancharapalem", "NAD Junction", "Gopalapatnam", "Pendurthi"], 
-      freq: 12,
-      route: "Town Kotharoad - Pendurthi",
-      fare: "₹18-28"
-    },
-    "10K": { 
-      stops: ["RTC Complex", "Jagadamba", "RK Beach", "VUDA Park", "Tenneti Park", "Kailasagiri"], 
-      freq: 12,
-      route: "RTC Complex - Kailasagiri",
-      fare: "₹15-30"
-    },
-    "28": { 
-      stops: ["RK Beach", "Jagadamba Centre", "RTC Complex", "NAD Junction", "Gopalapatnam", "Simhachalam"], 
-      freq: 10,
-      route: "RK Beach - Simhachalam",
-      fare: "₹12-25"
-    }
-  },
-  "Vijayawada": {
-    "1": { 
-      stops: ["PNBS", "Benz Circle", "Governorpet", "Madhurawada"], 
-      freq: 12,
-      route: "PNBS - Madhurawada",
-      fare: "₹10-18"
-    },
-    "2K": { 
-      stops: ["PNBS", "Auto Nagar", "Poranki", "Gollapudi"], 
-      freq: 15,
-      route: "PNBS - Gollapudi",
-      fare: "₹15-25"
-    },
-    "5G": { 
-      stops: ["PNBS", "Governorpet", "Gunadala", "Enikepadu"], 
-      freq: 15,
-      route: "PNBS - Enikepadu",
-      fare: "₹12-22"
-    },
-    "10": { 
-      stops: ["PNBS", "Auto Nagar", "Gannavaram Airport"], 
-      freq: 20,
-      route: "PNBS - Airport",
-      fare: "₹25-40"
-    }
-  },
-  "Guntur": {
-    "21": { 
-      stops: ["Guntur Bus Stand", "Brodipet", "Arundelpet", "Nallapadu"], 
-      freq: 15,
-      route: "Bus Stand - Nallapadu",
-      fare: "₹8-15"
-    },
-    "22": { 
-      stops: ["Guntur Bus Stand", "Sangadigunta", "Chowdavaram", "Sattenapalli"], 
-      freq: 20,
-      route: "Bus Stand - Sattenapalli",
-      fare: "₹12-25"
-    },
-    "23": { 
-      stops: ["Guntur Bus Stand", "Railway Station", "Pedakakani", "Tenali"], 
-      freq: 25,
-      route: "Bus Stand - Tenali",
-      fare: "₹15-30"
-    },
-    "24": { 
-      stops: ["Guntur Bus Stand", "Market", "Bhimavaram Junction", "Narasaraopet"], 
-      freq: 25,
-      route: "Bus Stand - Narasaraopet",
-      fare: "₹18-35"
-    }
-  },
-  "Tirupati": {
-    "101": { 
-      stops: ["Tirupati Bus Stand", "Leela Mahal Circle", "Alipiri", "Tirumala"], 
-      freq: 15,
-      route: "Bus Stand - Tirumala",
-      fare: "₹20-35"
-    },
-    "102": { 
-      stops: ["Tirupati Bus Stand", "Renigunta", "Airport", "Karvetinagaram"], 
-      freq: 25,
-      route: "Bus Stand - Karvetinagaram",
-      fare: "₹25-45"
-    },
-    "103": { 
-      stops: ["Tirupati Bus Stand", "Kapila Theertham", "Zoo Park", "Chandragiri"], 
-      freq: 20,
-      route: "Bus Stand - Chandragiri",
-      fare: "₹15-28"
-    },
-    "104": { 
-      stops: ["Tirupati Bus Stand", "Dareddy Palem", "Kovur", "Sholinghur"], 
-      freq: 22,
-      route: "Bus Stand - Sholinghur",
-      fare: "₹20-40"
-    }
+const formatTime = (date) =>
+  date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+
+const parseFreqToMinutes = (freq) => {
+  if (!freq) return 15;
+  const m = String(freq).match(/(\\d+)\\s*(min|hr|hour|minute|minutes)/i);
+  if (m) {
+    let n = parseInt(m[1], 10);
+    const unit = (m[2] || "").toLowerCase();
+    if (unit.startsWith("hr") || unit.startsWith("hour")) n *= 60;
+    return n;
   }
+  return 15;
 };
 
-function App() {
-  const [selectedCity, setSelectedCity] = useState(null);
-  const [selectedBus, setSelectedBus] = useState(null);
-  const [selectedStop, setSelectedStop] = useState(null);
-  const [currentTime, setCurrentTime] = useState(new Date());
+const parseTimeStringToToday = (timeStr) => {
+  if (!timeStr) return null;
+  const m = String(timeStr).match(/(\\d{1,2}):?(\\d{2})?\\s*(AM|PM)/i);
+  if (!m) return null;
+  let hh = parseInt(m[1], 10);
+  const mm = m[2] ? parseInt(m[2], 10) : 0;
+  const ampm = m[3].toUpperCase();
+  if (ampm === "PM" && hh !== 12) hh += 12;
+  if (ampm === "AM" && hh === 12) hh = 0;
+  const d = new Date();
+  d.setHours(hh, mm, 0, 0);
+  return d;
+};
+
+const App = () => {
+  const [busData, setBusData] = useState({});
+  const [cities, setCities] = useState([]);
+  const [selectedCity, setSelectedCity] = useState("");
+  const [selectedBus, setSelectedBus] = useState("");
+  const [selectedStop, setSelectedStop] = useState("");
+  const [destinationStop, setDestinationStop] = useState("");
   const [favorites, setFavorites] = useState([]);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [lastUpdated, setLastUpdated] = useState(new Date());
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [issueDescription, setIssueDescription] = useState("");
 
-  // Update time every minute
+  const [userLocation, setUserLocation] = useState(null);
+  const [locationError, setLocationError] = useState(null);
+  const [isGovernmentUser, setIsGovernmentUser] = useState(false);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [loginError, setLoginError] = useState("");
+
+  // Favorites load/save
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 60000);
-    return () => clearInterval(timer);
+    const raw = localStorage.getItem("bus-favorites");
+    if (raw) setFavorites(JSON.parse(raw));
+  }, []);
+  useEffect(() => {
+    localStorage.setItem("bus-favorites", JSON.stringify(favorites));
+  }, [favorites]);
+
+  // Clock update
+  useEffect(() => {
+    const t = setInterval(() => setCurrentTime(new Date()), 30000);
+    return () => clearInterval(t);
   }, []);
 
-  // Monitor online status
+  // Online/offline listener
   useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-    
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    
+    const onOnline = () => setIsOnline(true);
+    const onOffline = () => setIsOnline(false);
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
     return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("offline", onOffline);
     };
   }, []);
 
-  const formatTime = (date) => {
-    return date.toLocaleTimeString('en-US', { 
-      hour: 'numeric', 
-      minute: '2-digit',
-      hour12: true 
-    });
+  // Fetch data from server
+  const fetchTimetables = useCallback(() => {
+    setLoading(true);
+    fetch("http://localhost:7000/api/bus-timetables")
+      .then((res) => (res.ok ? res.json() : Promise.reject("Server error")))
+      .then((data) => {
+        setBusData(data || {});
+        setCities(Object.keys(data || {}));
+        setLoading(false);
+        setLastUpdated(new Date());
+        setError(null);
+      })
+      .catch(() => {
+        setBusData({});
+        setCities([]);
+        setLoading(false);
+        setLastUpdated(new Date());
+        setError("Server not available");
+      });
+  }, []);
+  useEffect(() => {
+    fetchTimetables();
+  }, [fetchTimetables]);
+
+  const handleStopSelection = (stop) => {
+    setSelectedStop(stop);
+    setDestinationStop("");
+  };
+
+  const toggleFavorite = () => {
+    if (!selectedCity || !selectedBus || !selectedStop) return;
+    const key = `${selectedCity}||${selectedBus}||${selectedStop}`;
+    setFavorites((prev) =>
+      prev.includes(key) ? prev.filter((p) => p !== key) : [...prev, key]
+    );
+  };
+  const isFavorite = () => {
+    if (!selectedCity || !selectedBus || !selectedStop) return false;
+    return favorites.includes(`${selectedCity}||${selectedBus}||${selectedStop}`);
   };
 
   const computeArrival = useCallback(() => {
     if (!selectedCity || !selectedBus || !selectedStop) return null;
-
+    const busObj = busData[selectedCity]?.[selectedBus];
+    if (!busObj) return null;
+    const freqParsed = parseFreqToMinutes(busObj.freq);
     const now = new Date();
-    const start = new Date(now);
-    start.setHours(6, 0, 0, 0); // Earlier start time
-    const end = new Date(now);
-    end.setHours(23, 0, 0, 0); // Later end time
-
-    const busObj = cityData[selectedCity][selectedBus];
-    const freq = busObj.freq;
-
+    const start =
+      parseTimeStringToToday(busObj.firstBus) ||
+      new Date(new Date().setHours(6, 0, 0, 0));
+    const end =
+      parseTimeStringToToday(busObj.lastBus) ||
+      new Date(new Date().setHours(23, 0, 0, 0));
     if (now < start) {
+      const mins = Math.ceil((start - now) / 60000);
       return {
         time: formatTime(start),
-        status: 'Service starts at 6:00 AM',
-        minutes: Math.ceil((start - now) / 60000),
-        isActive: false
+        status: `Service starts in ${mins} min`,
+        minutes: mins,
+        isActive: false,
       };
     }
-
-    if (now > end) {
+    if (now > end)
       return {
-        time: '--:--',
-        status: 'Service ended for today',
+        time: "--:--",
+        status: "Service ended for today",
         minutes: 0,
-        isActive: false
+        isActive: false,
       };
-    }
-
     const minsSince = Math.floor((now - start) / 60000);
-    const nextOffset = Math.ceil(minsSince / freq) * freq;
+    const nextOffset =
+      Math.ceil((minsSince + 0.00001) / freqParsed) * freqParsed;
     const nextTime = new Date(start.getTime() + nextOffset * 60000);
     const diff = Math.max(0, Math.ceil((nextTime - now) / 60000));
-
     return {
       time: formatTime(nextTime),
-      status: diff === 0 ? 'Arriving now!' : diff === 1 ? 'Arriving in 1 minute' : `Arriving in ${diff} minutes`,
+      status:
+        diff === 0
+          ? "Arriving now!"
+          : diff === 1
+          ? "Arriving in 1 minute"
+          : `Arriving in ${diff} minutes`,
       minutes: diff,
-      isActive: true
+      isActive: true,
     };
-  }, [selectedCity, selectedBus, selectedStop]);
+  }, [selectedCity, selectedBus, selectedStop, busData]);
+  const arrival = computeArrival();
 
-  const toggleFavorite = () => {
-    if (!selectedCity || !selectedBus || !selectedStop) return;
-    
-    const favoriteKey = `${selectedCity}-${selectedBus}-${selectedStop}`;
-    setFavorites(prev => 
-      prev.includes(favoriteKey) 
-        ? prev.filter(f => f !== favoriteKey)
-        : [...prev, favoriteKey]
-    );
-  };
-
-  const isFavorite = () => {
-    if (!selectedCity || !selectedBus || !selectedStop) return false;
-    const favoriteKey = `${selectedCity}-${selectedBus}-${selectedStop}`;
-    return favorites.includes(favoriteKey);
-  };
+  const stopsArray = busData[selectedCity]?.[selectedBus]?.stops || [];
+  const fromIndex = selectedStop ? stopsArray.indexOf(selectedStop) : -1;
+  const toIndex = destinationStop ? stopsArray.indexOf(destinationStop) : -1;
+  const distance =
+    fromIndex !== -1 && toIndex !== -1
+      ? Math.abs(toIndex - fromIndex) * 2
+      : 0;
 
   const refresh = () => {
     setLastUpdated(new Date());
-    setCurrentTime(new Date());
+    fetchTimetables();
   };
 
-  const arrival = computeArrival();
+  const handleIssueSubmit = (e) => {
+    e.preventDefault();
+    setIssueDescription("");
+  };
+
+  const handleMapRedirect = () => {
+    if (selectedStop && destinationStop) {
+      const encodedFrom = encodeURIComponent(selectedStop);
+      const encodedTo = encodeURIComponent(destinationStop);
+      const mapsUrl = `https://www.google.com/maps/dir/${encodedFrom}/${encodedTo}`;
+      window.open(mapsUrl, "_blank");
+    }
+  };
+
+  const getUserLocation = () => {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          });
+          setLocationError(null);
+        },
+        (error) => {
+          setLocationError(error.message);
+          setUserLocation(null);
+        }
+      );
+    } else {
+      setLocationError("Geolocation is not supported by your browser.");
+    }
+  };
+
+  const handleLogin = (e) => {
+    e.preventDefault();
+    if (username === "charangit" && password === "charangit") {
+      setIsGovernmentUser(true);
+      setLoginError("");
+    } else {
+      setLoginError("Invalid credentials. Please try again.");
+    }
+  };
+
+  const handleLogout = () => {
+    setIsGovernmentUser(false);
+    setUsername("");
+    setPassword("");
+    setUserLocation(null);
+  };
 
   return (
-    <div className="app">
+    <div className="app-root">
       <div className="container">
-        {/* Header */}
-        <header className="header">
-          <div className="header-content">
-            <div className="title-section">
-              <Bus className="title-icon" />
-              <div>
-                <h1>APSRTC Live Tracker</h1>
-                <p className="subtitle">Real-time bus tracking for Andhra Pradesh</p>
-              </div>
-            </div>
-            <div className="header-actions">
-              <div className="status-indicator">
-                {isOnline ? (
-                  <Wifi className="status-icon online" />
-                ) : (
-                  <WifiOff className="status-icon offline" />
-                )}
-                <span className={`status-text ${isOnline ? 'online' : 'offline'}`}>
-                  {isOnline ? 'Online' : 'Offline'}
+        <header className="header-card">
+          <div className="header-left">
+            <h1 className="title">🚌 Smart Bus Timetable</h1>
+            <p className="subtitle">
+              Real-time information from local transport
+            </p>
+          </div>
+          <div className="header-right">
+            <div className="time-block">
+              <div className="time-now">
+                <span className={`status-pill ${isOnline ? "online" : "offline"}`}>
+                  {isOnline ? <Wifi size={16} /> : <WifiOff size={16} />}{" "}
+                  {isOnline ? "Online" : "Offline"}
                 </span>
               </div>
-              <button className="refresh-btn" onClick={refresh}>
-                <RefreshCw className="refresh-icon" />
-              </button>
+              <span className="last-updated">
+                Last updated:{" "}
+                {lastUpdated ? lastUpdated.toLocaleString() : "Never"}
+              </span>
             </div>
-          </div>
-          <div className="current-time">
-            <Clock className="time-icon" />
-            <span>Current Time: {formatTime(currentTime)}</span>
-            <span className="last-updated">Updated: {formatTime(lastUpdated)}</span>
           </div>
         </header>
 
-        {/* City Selection */}
-        <section className="selection-card">
-          <div className="card-header">
-            <MapPin className="card-icon" />
-            <h2>Select City</h2>
-          </div>
-          <div className="button-grid">
-            {Object.keys(cityData).map(city => (
-              <button
-                key={city}
-                className={`selection-btn city-btn ${selectedCity === city ? 'active' : ''}`}
-                onClick={() => {
-                  setSelectedCity(city);
-                  setSelectedBus(null);
-                  setSelectedStop(null);
-                }}
-              >
-                <span className="btn-text">{city}</span>
-                <span className="btn-count">{Object.keys(cityData[city]).length} routes</span>
+        <main>
+          {loading ? (
+            <div className="card">Loading timetable...</div>
+          ) : error ? (
+            <div className="card">
+              <AlertCircle /> {error}
+              <button onClick={refresh}>
+                <RefreshCw /> Retry
               </button>
-            ))}
-          </div>
-        </section>
-
-        {/* Bus and Stop Selection */}
-        <div className="selection-grid">
-          {/* Bus Selection */}
-          <section className="selection-card">
-            <div className="card-header">
-              <Bus className="card-icon" />
-              <h2>Select Bus Route</h2>
             </div>
-            <div className="selection-content">
-              {!selectedCity ? (
-                <div className="empty-state">
-                  <AlertCircle className="empty-icon" />
-                  <p>Please select a city first</p>
-                </div>
-              ) : (
-                <div className="button-list">
-                  {Object.entries(cityData[selectedCity]).map(([busNo, busData]) => (
-                    <button
-                      key={busNo}
-                      className={`selection-btn bus-btn ${selectedBus === busNo ? 'selected' : ''}`}
+          ) : (
+            <>
+              {favorites.length > 0 && (
+                <section className="card">
+                  <h3>★ Favorite Routes</h3>
+                  <div className="row">
+                    {favorites.map((fav) => {
+                      const [city, bus, stop] = fav.split("||");
+                      return (
+                        <div
+                          className="list-item"
+                          key={fav}
+                          onClick={() => {
+                            setSelectedCity(city);
+                            setSelectedBus(bus);
+                            setSelectedStop(stop);
+                          }}
+                        >
+                          <div>
+                            <span className="bus-no">{bus}</span>
+                            <div className="bus-route">
+                              {city} - {busData[city]?.[bus]?.route}
+                            </div>
+                          </div>
+                          <div className="list-right">
+                            <span className="freq">From {stop}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              )}
+
+              {/* City Selection Pills */}
+              <section className="card selection-card">
+                <h3>Select City</h3>
+                <div className="grid">
+                  {cities.map((c) => (
+                    <div
+                      key={c}
+                      className={`pill ${selectedCity === c ? "active" : ""}`}
                       onClick={() => {
-                        setSelectedBus(busNo);
-                        setSelectedStop(null);
+                        setSelectedCity(c);
+                        setSelectedBus("");
+                        setSelectedStop("");
+                        setDestinationStop("");
                       }}
                     >
-                      <div className="bus-info">
-                        <span className="bus-number">Bus {busNo}</span>
-                        <span className="bus-route">{busData.route}</span>
-                        <div className="bus-details">
-                          <span className="bus-freq">Every {busData.freq} min</span>
-                          <span className="bus-fare">{busData.fare}</span>
-                        </div>
-                      </div>
-                    </button>
+                      {c}
+                    </div>
                   ))}
                 </div>
-              )}
-            </div>
-          </section>
+              </section>
 
-          {/* Stop Selection */}
-          <section className="selection-card">
-            <div className="card-header">
-              <Navigation className="card-icon" />
-              <h2>Select Bus Stop</h2>
-            </div>
-            <div className="selection-content">
-              {!selectedBus ? (
-                <div className="empty-state">
-                  <AlertCircle className="empty-icon" />
-                  <p>Please select a bus route first</p>
-                </div>
-              ) : (
-                <div className="button-list">
-                  {cityData[selectedCity][selectedBus].stops.map((stop, index) => (
+              {/* Bus Selection Pills */}
+              {selectedCity && (
+                <section className="card selection-card">
+                  <h3>Select Bus</h3>
+                  <div className="grid">
+                    {Object.keys(busData[selectedCity] || {}).map((b) => (
+                      <div
+                        key={b}
+                        className={`pill ${selectedBus === b ? "active" : ""}`}
+                        onClick={() => {
+                          setSelectedBus(b);
+                          setSelectedStop("");
+                          setDestinationStop("");
+                        }}
+                      >
+                        <strong>{b}</strong>
+                        <p>{busData[selectedCity][b].route}</p>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* Stop Selection Pills */}
+              {selectedBus && (
+                <section className="card selection-card">
+                  <h3>Select Stops</h3>
+                  <div className="stop-selection">
+                    <div>
+                      <h4>From Stop</h4>
+                      <div className="grid">
+                        {stopsArray.map((s) => (
+                          <div
+                            key={s}
+                            className={`pill ${
+                              selectedStop === s ? "active" : ""
+                            }`}
+                            onClick={() => handleStopSelection(s)}
+                          >
+                            {s}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <h4>To Stop</h4>
+                      <div className="grid">
+                        {stopsArray
+                          .filter((s) => s !== selectedStop)
+                          .map((s) => (
+                            <div
+                              key={s}
+                              className={`pill ${
+                                destinationStop === s ? "active" : ""
+                              }`}
+                              onClick={() => setDestinationStop(s)}
+                            >
+                              {s}
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              )}
+
+              {/* Arrival Info */}
+              {selectedStop && arrival && (
+                <section className="arrival-card">
+                  <div className="arrival-header">
+                    <h2 className="arrival-title">Next Arrival</h2>
                     <button
-                      key={stop}
-                      className={`selection-btn stop-btn ${selectedStop === stop ? 'selected' : ''}`}
-                      onClick={() => setSelectedStop(stop)}
+                      onClick={toggleFavorite}
+                      className={`fav ${isFavorite() ? "active" : ""}`}
                     >
-                      <div className="stop-info">
-                        <span className="stop-number">{index + 1}</span>
-                        <span className="stop-name">{stop}</span>
-                      </div>
+                      <Star size={32} fill="currentColor" />
                     </button>
-                  ))}
-                </div>
+                  </div>
+                  <div className="arrival-body">
+                    <span className="arrival-time-large">{arrival.time}</span>
+                    <p className="arrival-status">{arrival.status}</p>
+                    <div className="progress-wrap">
+                      <div
+                        className="progress-bar"
+                        style={{
+                          width: `${Math.max(10, 100 - arrival.minutes * 10)}%`,
+                        }}
+                      ></div>
+                    </div>
+                    <p className="route-fare">
+                      Approx. Distance: {distance}km
+                    </p>
+                  </div>
+                </section>
               )}
-            </div>
-          </section>
-        </div>
 
-        {/* Arrival Information */}
-        {arrival && selectedCity && selectedBus && selectedStop && (
-          <section className="arrival-card">
-            <div className="arrival-header">
-              <div className="arrival-title">
-                <h3>Next Bus {selectedBus} at {selectedStop}</h3>
-                <p className="arrival-subtitle">{selectedCity}</p>
-              </div>
-              <button 
-                className={`favorite-btn ${isFavorite() ? 'active' : ''}`}
-                onClick={toggleFavorite}
-              >
-                <Star className="favorite-icon" />
-              </button>
-            </div>
-            
-            <div className="arrival-info">
-              <div className="arrival-time">
-                <Clock className="arrival-clock" />
-                <span className="time-display">{arrival.time}</span>
-              </div>
-              <div className={`arrival-status ${arrival.isActive ? 'active' : 'inactive'}`}>
-                {arrival.status}
-              </div>
-            </div>
-
-            {arrival.isActive && arrival.minutes > 0 && (
-              <div className="progress-container">
-                <div className="progress-bar">
-                  <div 
-                    className="progress-fill"
-                    style={{ 
-                      width: `${Math.max(10, 100 - (arrival.minutes / cityData[selectedCity][selectedBus].freq * 100))}%` 
-                    }}
-                  ></div>
+              {/* Map Section */}
+              <section className="card map-card">
+                <h3>Map & Directions</h3>
+                <div
+                  className="route-map-container"
+                  onClick={handleMapRedirect}
+                >
+                  <div className="map-placeholder">
+                    <span className="map-icon">🗺️</span>
+                    <h4>View Route on Map</h4>
+                    <p>Click to get directions between selected stops.</p>
+                  </div>
                 </div>
-                <span className="progress-text">
-                  {arrival.minutes} min remaining
-                </span>
-              </div>
-            )}
+              </section>
 
-            <div className="route-info">
-              <span className="route-text">Route: {cityData[selectedCity][selectedBus].route}</span>
-              <span className="fare-text">Fare: {cityData[selectedCity][selectedBus].fare}</span>
-            </div>
-          </section>
-        )}
+              {/* Report Issue */}
+              <section className="card report-card">
+                <h3>Report an Issue</h3>
+                <form onSubmit={handleIssueSubmit}>
+                  <textarea
+                    value={issueDescription}
+                    onChange={(e) => setIssueDescription(e.target.value)}
+                    placeholder="Describe the issue (e.g., bus missing, delay, etc.)."
+                    required
+                  />
+                  <button type="submit" className="btn primary">
+                    Report Issue
+                  </button>
+                </form>
+              </section>
 
-        {/* Footer */}
-        <footer className="footer">
-          <p>
-            <strong>Demo Application</strong> - Static timetable data (6:00 AM - 11:00 PM service)
-          </p>
-          <p>Real-time GPS tracking and live updates coming soon</p>
+              {/* Government Login */}
+              {!isGovernmentUser ? (
+                <section className="login-card card">
+                  <h1>
+                    <LogIn size={28} /> Government Portal
+                  </h1>
+                  <p>Login to access the GPS tracker.</p>
+                  <form onSubmit={handleLogin}>
+                    <div className="input-group">
+                      <label htmlFor="username">Username</label>
+                      <input
+                        id="username"
+                        type="text"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        placeholder="charangit"
+                        required
+                      />
+                    </div>
+                    <div className="input-group">
+                      <label htmlFor="password">Password</label>
+                      <input
+                        id="password"
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="••••••••"
+                        required
+                      />
+                    </div>
+                    {loginError && <p className="login-error">{loginError}</p>}
+                    <button type="submit" className="btn primary">
+                      Login
+                    </button>
+                  </form>
+                </section>
+              ) : (
+                <section className="gps-card card">
+                  <h3>
+                    <MapPin size={24} /> GPS Tracker
+                  </h3>
+                  <p className="subtitle">Real-time location of the bus.</p>
+                  <button onClick={getUserLocation} className="btn primary">
+                    Get My Location
+                  </button>
+                  {userLocation && (
+                    <div className="location-info">
+                      <p>
+                        Latitude:{" "}
+                        <strong>{userLocation.latitude.toFixed(6)}</strong>
+                      </p>
+                      <p>
+                        Longitude:{" "}
+                        <strong>{userLocation.longitude.toFixed(6)}</strong>
+                      </p>
+                    </div>
+                  )}
+                  {locationError && (
+                    <p className="location-error">
+                      <AlertCircle size={18} /> {locationError}
+                    </p>
+                  )}
+                  <button
+                    onClick={handleLogout}
+                    className="btn secondary logout-button"
+                  >
+                    <LogOut size={16} /> Logout
+                  </button>
+                </section>
+              )}
+            </>
+          )}
+        </main>
+
+       <footer className="footer-note">
+          Demo — Data served from backend. Make sure server (port 5001) is running.
         </footer>
       </div>
     </div>
   );
-}
+};
 
-export default App; 
+export default App;
